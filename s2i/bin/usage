@@ -1,0 +1,9 @@
+#!/bin/sh
+
+cat <<EOF
+s2i build git://github.com/bparees/openshift-jee-sample openshift/wildfly-81-centos wildflytest
+
+You can then run the resulting image via:
+docker run -p 8080:8080 wildflytest
+
+EOF

@@ -1,0 +1,90 @@
+#!/bin/bash
+
+
+export KHAN_INSTANCE_ID=${HOSTNAME%-*}
+if [ -z "$KHAN_INSTANCE_ID" ]; then
+    export KHAN_INSTANCE_ID=$HOSTNAME
+    echo "Hostname unrecognized - using hostname" >> /tmp/khan.sti.log
+fi
+
+if [ -z "$KHAN_APPLICATION_NAME" ]; then
+    export KHAN_APPLICATION_NAME=openshift
+    echo "KHAN [apm] Application Name not specified! using - ${KHAN_APPLICATION_NAME}" >> /tmp/khan.sti.log
+fi
+
+if [ -z "$KHAN_HOST" ]; then
+    #export KHAN_HOST=192.168.23.117
+    export KHAN_HOST=175.124.38.200
+    echo "KHAN [apm] host ip not specified!; Wont work!" >> /tmp/khan.sti.log
+fi
+
+if [ -z "$KHAN_PORT" ]; then
+    export KHAN_PORT=80
+    echo "KHAN [apm] host port not specified; Wont work!" >> /tmp/khan.sti.log
+fi
+
+if [ -z "$KHAN_APDEX_THRESHOLD" ]; then
+    export KHAN_APDEX_THRESHOLD=3.0
+    echo "KHAN [apm] apdex threshold not specified! using default value - ${KHAN_APDEX_THRESHOLD}" >> /tmp/khan.sti.log
+fi
+
+if [ -z "$KHAN_TRANSACTION_TRACE_ENABLED" ]; then
+    export KHAN_TRANSACTION_TRACE_ENABLED=true
+    echo "KHAN [apm] transaction trace enabled not specified! using default value - ${KHAN_TRANSACTION_TRACE_ENABLED}" >> /tmp/khan.sti.log
+fi
+
+if [ -z "$KHAN_TRANSACTION_TRACE_THRESHOLD" ]; then
+    export KHAN_TRANSACTION_TRACE_THRESHOLD=500
+    echo "KHAN [apm] transaction trace threshold not specified; using default value - ${KHAN_TRANSACTION_TRACE_THRESHOLD}" >> /tmp/khan.sti.log
+fi
+
+if [ -z "$KHAN_SQL_CAPTURE_ENABLED" ]; then
+    export KHAN_SQL_CAPTURE_ENABLED=true
+    echo "KHAN [apm] transaction sql capture not specified; using default value - ${KHAN_SQL_CAPTURE_ENABLED}" >> /tmp/khan.sti.log
+fi
+
+if [ -z "$KHAN_TRANSACTION_SAMPLING_INTERVAL" ]; then
+    export KHAN_TRANSACTION_SAMPLING_INTERVAL=1
+    echo "KHAN [apm] transaction sampling interval not specified; using default value - ${KHAN_TRANSACTION_SAMPLING_INTERVAL}" >> /tmp/khan.sti.log
+fi
+
+if [ -z "$KHAN_DB_CONN_LEAK_WARNING" ]; then
+    export KHAN_DB_CONN_LEAK_WARNING=true
+    echo "KHAN [apm] db connection leak warning not specified; using default value - ${KHAN_DB_CONN_LEAK_WARNING}" >> /tmp/khan.sti.log
+fi
+
+export JBOSS_LOGMANAGER_DIR="/opt/eap/modules/system/layers/base/org/jboss/logmanager/main"
+export JBOSS_LOGMANAGER_JAR=`cd "$JBOSS_LOGMANAGER_DIR" && ls -1 *.jar`
+
+export JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+export JAVA_OPTS="$JAVA_OPTS -Xbootclasspath/p:$JBOSS_LOGMANAGER_DIR/$JBOSS_LOGMANAGER_JAR"
+export JAVA_OPTS="$JAVA_OPTS -noverify -javaagent:/opt/khan-apm/khan-agent/khan-agent-$KHAN_AGENT_VERSION.jar"
+export JAVA_OPTS="$JAVA_OPTS -Djboss.modules.system.pkgs=org.jboss.byteman,com.opennaru.khan.agent,org.jboss.logmanager"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_INSTANCE_ID=$KHAN_INSTANCE_ID"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_APPLICATION_NAME=$KHAN_APPLICATION_NAME"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_HOST=$KHAN_HOST"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_PORT=$KHAN_PORT"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_APDEX_THRESHOLD=$KHAN_APDEX_THRESHOLD"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_TRANSACTION_TRACE_ENABLED=$KHAN_TRANSACTION_TRACE_ENABLED"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_TRANSACTION_TRACE_THRESHOLD=$KHAN_TRANSACTION_TRACE_THRESHOLD"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_SQL_CAPTURE_ENABLED=$KHAN_SQL_CAPTURE_ENABLED"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_TRANSACTION_SAMPLING_INTERVAL=$KHAN_TRANSACTION_SAMPLING_INTERVAL"
+export JAVA_OPTS="$JAVA_OPTS -DKHAN_DB_CONN_LEAK_WARNING=$KHAN_DB_CONN_LEAK_WARNING"
+
+echo JAVA_OPTS $JAVA_OPTS >> /tmp/myenv.env
+echo env  >> /tmp/myenv.env
+env >> /tmp/myenv.env
+
+#export KHAN_SYS_AGENT_HOME=/opt/khan-apm/khan-sys-agent
+#export JAVA_OPTS="$JAVA_OPTS -DKHAN_HOST=$KHAN_HOST -DKHAN_PORT=$KHAN_PORT"
+#/opt/khan-apm/khan-sys-agent/bin/start.sh
+
+# temp workaround to avoid base image starting 
+# Jolokia javaagent 
+#echo "" > /opt/eap/bin/standalone.conf
+
+chown -R jboss:jboss /opt/eap/standalone/deployments/
+
+#exec /opt/eap/bin/standalone.sh -b 0.0.0.0 -bmanagement 0.0.0.0
+
+exec $JBOSS_HOME/bin/openshift-launch.sh
